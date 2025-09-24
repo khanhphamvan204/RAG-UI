@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-    USE_PROXY_FOR_AUTH: true,
+    USE_PROXY_FOR_AUTH: false,
     USE_PROXY_FOR_RAG: false,
     AUTH_BASE_URL: 'https://ai-api.bitech.vn',
     RAG_BASE_URL: 'https://ai-database.bitech.vn',
