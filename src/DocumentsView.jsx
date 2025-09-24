@@ -1,5 +1,4 @@
-// Trong file DocumentsView.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { API_CONFIG, apiRequest, safeJsonParse, TokenManager } from './api';
 import Header from './DocumentView/Header';
@@ -25,16 +24,43 @@ const DEFAULT_FILE_TYPES = [
     'Khác',
 ];
 
+// Custom hook để debounce search query
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+};
+
 const DocumentsView = () => {
     const { user, isReady, refreshToken, loading: authLoading, error: authError } = useAuth();
+
+    // Refs để tracking và tránh race conditions
+    const isMountedRef = useRef(true);
+    const initRef = useRef(false);
+    const currentRequestRef = useRef(null);
+
     const [documents, setDocuments] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [fileTypeFilter, setFileTypeFilter] = useState('');
     const [loadingData, setLoadingData] = useState(false);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [totalDocuments, setTotalDocuments] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [isUploading, setIsUploading] = useState(false);
     const perPage = 10;
+
+    // Debounce search query với delay 300ms
+    const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,10 +117,22 @@ const DocumentsView = () => {
     const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
     const [error, setError] = useState('');
 
-    // Token validation helper
+    // Cleanup
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+            if (currentRequestRef.current) {
+                currentRequestRef.current = null;
+            }
+        };
+    }, []);
+
+    // Token validation helper - STABLE
     const validateToken = useCallback(async () => {
         if (!isReady || !TokenManager.get()) {
-            setError('Vui lòng đăng nhập lại để tiếp tục');
+            if (isMountedRef.current) {
+                setError('Vui lòng đăng nhập lại để tiếp tục');
+            }
             return false;
         }
 
@@ -103,7 +141,9 @@ const DocumentsView = () => {
                 await refreshToken();
                 return true;
             } catch (error) {
-                setError('Không thể làm mới token, vui lòng đăng nhập lại');
+                if (isMountedRef.current) {
+                    setError('Không thể làm mới token, vui lòng đăng nhập lại');
+                }
                 return false;
             }
         }
@@ -113,20 +153,20 @@ const DocumentsView = () => {
 
     // Update uploadedBy when user changes
     useEffect(() => {
-        if (user?.username) {
+        if (user?.username && isMountedRef.current) {
             setUploadedBy(user.username);
         }
-    }, [user]);
+    }, [user?.username]);
 
-    // Fetch file types
+    // Fetch file types - STABLE
     const fetchFileTypes = useCallback(async () => {
-        if (!isReady) return;
+        if (!isReady || !isMountedRef.current) return;
         const isValid = await validateToken();
         if (!isValid) return;
 
         try {
             const response = await apiRequest(API_CONFIG.ENDPOINTS.DOCUMENTS_TYPES, {}, true, false);
-            if (response.ok) {
+            if (response.ok && isMountedRef.current) {
                 const data = await safeJsonParse(response);
                 if (data?.folders?.length > 0) {
                     setFileTypes(data.folders);
@@ -134,19 +174,21 @@ const DocumentsView = () => {
                     setFileTypes(DEFAULT_FILE_TYPES);
                     setError('Dữ liệu loại tài liệu trống, sử dụng danh sách mặc định');
                 }
-            } else {
+            } else if (isMountedRef.current) {
                 setFileTypes(DEFAULT_FILE_TYPES);
                 setError('Không thể tải danh sách loại tài liệu, sử dụng danh sách mặc định');
             }
         } catch (error) {
-            setFileTypes(DEFAULT_FILE_TYPES);
-            setError('Lỗi khi tải danh sách loại tài liệu: ' + error.message);
+            if (isMountedRef.current) {
+                setFileTypes(DEFAULT_FILE_TYPES);
+                setError('Lỗi khi tải danh sách loại tài liệu: ' + error.message);
+            }
         }
     }, [isReady, validateToken]);
 
-    // Fetch users
+    // Fetch users - STABLE
     const fetchUsers = useCallback(async (page = 1, search = '') => {
-        if (!isReady) return;
+        if (!isReady || !isMountedRef.current) return;
         const isValid = await validateToken();
         if (!isValid) return;
 
@@ -160,7 +202,7 @@ const DocumentsView = () => {
             const endpoint = `${API_CONFIG.ENDPOINTS.ALL_USERS}?${params}`;
             const response = await apiRequest(endpoint, {}, true, true);
 
-            if (response.ok) {
+            if (response.ok && isMountedRef.current) {
                 const data = await safeJsonParse(response);
                 setUsers(data.data?.users || []);
                 setUsersPagination({
@@ -171,21 +213,25 @@ const DocumentsView = () => {
                     has_next: data.data?.pagination?.has_next || false,
                     has_prev: data.data?.pagination?.has_prev || false,
                 });
-            } else {
+            } else if (isMountedRef.current) {
                 setUsers([]);
                 setError('Không thể tải danh sách người dùng');
             }
         } catch (error) {
-            setUsers([]);
-            setError('Lỗi khi tải danh sách người dùng');
+            if (isMountedRef.current) {
+                setUsers([]);
+                setError('Lỗi khi tải danh sách người dùng');
+            }
         } finally {
-            setIsLoadingUsers(false);
+            if (isMountedRef.current) {
+                setIsLoadingUsers(false);
+            }
         }
     }, [isReady, validateToken]);
 
-    // Fetch departments
+    // Fetch departments - STABLE
     const fetchDepartments = useCallback(async (page = 1, search = '') => {
-        if (!isReady) return;
+        if (!isReady || !isMountedRef.current) return;
         const isValid = await validateToken();
         if (!isValid) return;
 
@@ -199,7 +245,7 @@ const DocumentsView = () => {
             const endpoint = `${API_CONFIG.ENDPOINTS.DEPARTMENTS}?${params}`;
             const response = await apiRequest(endpoint, {}, true, true);
 
-            if (response.ok) {
+            if (response.ok && isMountedRef.current) {
                 const data = await safeJsonParse(response);
                 const departmentsList = data.data?.departments || data.departments || [];
 
@@ -218,7 +264,7 @@ const DocumentsView = () => {
                     has_next: data.data?.pagination?.has_next || data.has_next || false,
                     has_prev: data.data?.pagination?.has_prev || data.has_prev || false,
                 });
-            } else {
+            } else if (isMountedRef.current) {
                 const defaultDepartments = [
                     { department_id: 'dept1', name: 'Khoa Toán', code: 'MATH' },
                     { department_id: 'dept2', name: 'Khoa Vật Lý', code: 'PHYS' },
@@ -254,14 +300,18 @@ const DocumentsView = () => {
             }
         } catch (error) {
             console.error('Error fetching departments:', error);
-            setError('Lỗi khi tải danh sách phòng ban');
-            setDepartments([]);
+            if (isMountedRef.current) {
+                setError('Lỗi khi tải danh sách phòng ban');
+                setDepartments([]);
+            }
         } finally {
-            setIsLoadingDepartments(false);
+            if (isMountedRef.current) {
+                setIsLoadingDepartments(false);
+            }
         }
     }, [isReady, validateToken]);
 
-    // Fetch document details
+    // Fetch document details - STABLE
     const fetchDocumentDetails = useCallback(async (documentId) => {
         if (!isReady) return;
         const isValid = await validateToken();
@@ -437,34 +487,58 @@ const DocumentsView = () => {
         }
     }, [isReady, validateToken, selectedDocument]);
 
-    // Fetch documents
-    const fetchDocuments = useCallback(
-        async (fileType = '', search = '', page = 1, limit = perPage) => {
-            if (!isReady) {
-                console.warn('fetchDocuments called before auth is ready. Aborting.');
+    // CHÍNH: Fetch documents - STABLE VERSION
+    const fetchDocuments = useCallback(async (fileType, search, page) => {
+        if (!isReady || !isMountedRef.current) return;
+
+        const isValid = await validateToken();
+        if (!isValid) return;
+
+        // Cancel previous request
+        if (currentRequestRef.current) {
+            currentRequestRef.current = null;
+        }
+
+        const requestId = Date.now();
+        currentRequestRef.current = requestId;
+
+        // Determine if this is a search request
+        const isSearching = search !== '' || fileType !== '';
+
+        if (isSearching && isMountedRef.current) {
+            setSearchLoading(true);
+        } else if (isMountedRef.current) {
+            setLoadingData(true);
+        }
+
+        if (isMountedRef.current) {
+            setError('');
+        }
+
+        try {
+            const skip = (page - 1) * perPage;
+            const params = new URLSearchParams();
+            if (fileType) params.append('file_type', fileType);
+            if (search) params.append('q', search);
+            params.append('limit', perPage.toString());
+            params.append('skip', skip.toString());
+
+            const endpoint = `${API_CONFIG.ENDPOINTS.DOCUMENTS_LIST}?${params}`;
+            const response = await apiRequest(endpoint, {}, false, false);
+
+            // Check if this request is still current
+            if (currentRequestRef.current !== requestId || !isMountedRef.current) {
                 return;
             }
-            const isValid = await validateToken();
-            if (!isValid) return;
 
-            setLoadingData(true);
-            setError('');
-            try {
-                const skip = (page - 1) * limit;
-                const params = new URLSearchParams();
-                if (fileType) params.append('file_type', fileType);
-                if (search) params.append('q', search);
-                params.append('limit', limit.toString());
-                params.append('skip', skip.toString());
-
-                const endpoint = `${API_CONFIG.ENDPOINTS.DOCUMENTS_LIST}?${params}`;
-                const response = await apiRequest(endpoint, {}, false, false);
-
-                if (response.ok) {
-                    const data = await safeJsonParse(response);
+            if (response.ok) {
+                const data = await safeJsonParse(response);
+                if (isMountedRef.current && currentRequestRef.current === requestId) {
                     setDocuments(data.documents || []);
                     setTotalDocuments(data.total || 0);
-                } else {
+                }
+            } else {
+                if (isMountedRef.current && currentRequestRef.current === requestId) {
                     setDocuments([]);
                     setTotalDocuments(0);
                     setError(
@@ -473,16 +547,24 @@ const DocumentsView = () => {
                             : 'Không thể tải danh sách tài liệu'
                     );
                 }
-            } catch (error) {
+            }
+        } catch (error) {
+            if (isMountedRef.current && currentRequestRef.current === requestId) {
                 setDocuments([]);
                 setTotalDocuments(0);
                 setError('Lỗi kết nối khi tải tài liệu');
-            } finally {
-                setLoadingData(false);
             }
-        },
-        [isReady, perPage, validateToken]
-    );
+        } finally {
+            if (isMountedRef.current && currentRequestRef.current === requestId) {
+                if (isSearching) {
+                    setSearchLoading(false);
+                } else {
+                    setLoadingData(false);
+                }
+                currentRequestRef.current = null;
+            }
+        }
+    }, [isReady, validateToken, perPage]); // REMOVED debouncedSearchQuery from dependencies
 
     // Delete document
     const handleDelete = async (docId) => {
@@ -504,7 +586,7 @@ const DocumentsView = () => {
             if (response.ok) {
                 setIsDeleteModalOpen(false);
                 setDeletingDocument(null);
-                fetchDocuments(fileTypeFilter, searchQuery, currentPage);
+                fetchDocuments(fileTypeFilter, debouncedSearchQuery, currentPage);
                 setError('');
             } else {
                 setError('Không thể xóa tài liệu');
@@ -552,7 +634,7 @@ const DocumentsView = () => {
                 setEditingDocument(null);
                 setEditSelectedUsers([]);
                 setEditSelectedDepartments([]);
-                fetchDocuments(fileTypeFilter, searchQuery, currentPage);
+                fetchDocuments(fileTypeFilter, debouncedSearchQuery, currentPage);
                 setError('');
             } else {
                 const errorData = await response.json();
@@ -600,7 +682,7 @@ const DocumentsView = () => {
             if (response.ok) {
                 setIsModalOpen(false);
                 resetUploadForm();
-                fetchDocuments(fileTypeFilter, searchQuery, currentPage);
+                fetchDocuments(fileTypeFilter, debouncedSearchQuery, currentPage);
                 setError('');
             } else {
                 const errorData = await response.json();
@@ -613,14 +695,14 @@ const DocumentsView = () => {
         }
     };
 
-    // Reset upload form
-    const resetUploadForm = () => {
+    // Reset upload form - STABLE
+    const resetUploadForm = useCallback(() => {
         setSelectedFile(null);
         setNewDocType('');
         setSelectedUsers([]);
         setSelectedDepartments([]);
         setUploadedBy(user?.username || '');
-    };
+    }, [user?.username]);
 
     // Handle file change
     const handleFileChange = (e) => {
@@ -665,45 +747,172 @@ const DocumentsView = () => {
         await fetchDocumentDetails(doc._id);
     };
 
-    // Initialize data with retry mechanism
-    const initializeData = useCallback(async () => {
-        if (!isReady || !user || authLoading) return;
-
-        setLoadingData(true);
-        setError('');
-        try {
-            await Promise.all([
-                fetchFileTypes(),
-                fetchUsers(1),
-                fetchDepartments(1),
-                fetchDocuments(fileTypeFilter, searchQuery, currentPage),
-            ]);
-        } catch (error) {
-            setError('Lỗi khi tải dữ liệu ban đầu: ' + error.message);
-        } finally {
-            setLoadingData(false);
-        }
-    }, [isReady, user, authLoading, fileTypeFilter, searchQuery, currentPage, fetchFileTypes, fetchUsers, fetchDepartments, fetchDocuments]);
-
-    // Trigger data initialization
+    // Initialize data - CHỈ CHẠY MỘT LẦN
     useEffect(() => {
-        // Chỉ thực hiện fetch khi context đã sẵn sàng
-        if (isReady) {
-            console.log('Auth is ready, fetching initial data...');
-            initializeData();
-        } else {
-            console.log('Auth is not ready yet, waiting...');
-        }
-        // Thêm isReady vào dependency array
-    }, [isReady, initializeData]);
+        if (!isReady || !user || authLoading || initRef.current) return;
+
+        initRef.current = true;
+
+        const initData = async () => {
+            if (!isMountedRef.current) return;
+
+            setLoadingData(true);
+            setError('');
+
+            try {
+                await Promise.all([
+                    fetchFileTypes(),
+                    fetchUsers(1),
+                    fetchDepartments(1),
+                ]);
+
+                if (isMountedRef.current) {
+                    await fetchDocuments('', '', 1);
+                }
+            } catch (error) {
+                if (isMountedRef.current) {
+                    setError('Lỗi khi tải dữ liệu ban đầu: ' + error.message);
+                }
+            } finally {
+                if (isMountedRef.current) {
+                    setLoadingData(false);
+                }
+            }
+        };
+
+        initData();
+    }, [isReady, user, authLoading, fetchFileTypes, fetchUsers, fetchDepartments, fetchDocuments]);
+
+    // CRITICAL FIX: Separate effect for search/filter changes - NO fetchDocuments in dependencies
+    useEffect(() => {
+        if (!isReady || !initRef.current) return;
+
+        const timer = setTimeout(() => {
+            if (isMountedRef.current) {
+                // Call fetchDocuments directly without it being in dependencies
+                const performSearch = async () => {
+                    if (!isReady || !isMountedRef.current) return;
+
+                    const isValid = await validateToken();
+                    if (!isValid) return;
+
+                    // Cancel previous request
+                    if (currentRequestRef.current) {
+                        currentRequestRef.current = null;
+                    }
+
+                    const requestId = Date.now();
+                    currentRequestRef.current = requestId;
+
+                    const isSearching = debouncedSearchQuery !== '' || fileTypeFilter !== '';
+
+                    if (isSearching && isMountedRef.current) {
+                        setSearchLoading(true);
+                    }
+
+                    if (isMountedRef.current) {
+                        setError('');
+                    }
+
+                    try {
+                        const skip = (currentPage - 1) * perPage;
+                        const params = new URLSearchParams();
+                        if (fileTypeFilter) params.append('file_type', fileTypeFilter);
+                        if (debouncedSearchQuery) params.append('q', debouncedSearchQuery);
+                        params.append('limit', perPage.toString());
+                        params.append('skip', skip.toString());
+
+                        const endpoint = `${API_CONFIG.ENDPOINTS.DOCUMENTS_LIST}?${params}`;
+                        const response = await apiRequest(endpoint, {}, false, false);
+
+                        if (currentRequestRef.current !== requestId || !isMountedRef.current) {
+                            return;
+                        }
+
+                        if (response.ok) {
+                            const data = await safeJsonParse(response);
+                            if (isMountedRef.current && currentRequestRef.current === requestId) {
+                                setDocuments(data.documents || []);
+                                setTotalDocuments(data.total || 0);
+                            }
+                        } else {
+                            if (isMountedRef.current && currentRequestRef.current === requestId) {
+                                setDocuments([]);
+                                setTotalDocuments(0);
+                                setError(
+                                    response.status === 401
+                                        ? 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại'
+                                        : 'Không thể tải danh sách tài liệu'
+                                );
+                            }
+                        }
+                    } catch (error) {
+                        if (isMountedRef.current && currentRequestRef.current === requestId) {
+                            setDocuments([]);
+                            setTotalDocuments(0);
+                            setError('Lỗi kết nối khi tải tài liệu');
+                        }
+                    } finally {
+                        if (isMountedRef.current && currentRequestRef.current === requestId) {
+                            if (isSearching) {
+                                setSearchLoading(false);
+                            }
+                            currentRequestRef.current = null;
+                        }
+                    }
+                };
+
+                performSearch();
+            }
+        }, 50); // Very short delay
+
+        return () => clearTimeout(timer);
+    }, [fileTypeFilter, debouncedSearchQuery, currentPage, isReady, validateToken, perPage]);
+
+    // STABLE event handlers - MUST BE STABLE
+    const handleSearchChange = useCallback((query) => {
+        setSearchQuery(query);
+        setCurrentPage(1);
+    }, []); // NO dependencies
+
+    const handleFilterChange = useCallback((filter) => {
+        setFileTypeFilter(filter);
+        setCurrentPage(1);
+    }, []); // NO dependencies
+
+    const handlePageChange = useCallback((page) => {
+        setCurrentPage(page);
+    }, []); // NO dependencies
+
+    // Memoize fileTypes to prevent SearchFilter re-render
+    const memoizedFileTypes = useMemo(() => fileTypes, [fileTypes]);
+
+    // Memoize loading state
+    const isLoading = useMemo(() => {
+        return authLoading || (loadingData && !initRef.current);
+    }, [authLoading, loadingData]);
 
     // Show loading or error state
-    if (authLoading || loadingData) {
-        return <div className="flex-1 p-6">Đang tải dữ liệu...</div>;
+    if (isLoading) {
+        return (
+            <div className="flex-1 p-6 flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+                <div className="flex flex-col items-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <p className="text-gray-600 text-lg">Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        );
     }
 
     if (authError || !isReady) {
-        return <div className="flex-1 p-6">Vui lòng đăng nhập để tiếp tục. {authError}</div>;
+        return (
+            <div className="flex-1 p-6 flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+                <div className="text-center">
+                    <p className="text-red-600 text-lg mb-2">Vui lòng đăng nhập để tiếp tục</p>
+                    {authError && <p className="text-gray-600">{authError}</p>}
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -712,15 +921,16 @@ const DocumentsView = () => {
             <ErrorAlert error={error} setError={setError} />
             <SearchFilter
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                setSearchQuery={handleSearchChange}
                 fileTypeFilter={fileTypeFilter}
-                setFileTypeFilter={setFileTypeFilter}
-                fileTypes={fileTypes}
-                setCurrentPage={setCurrentPage}
+                setFileTypeFilter={handleFilterChange}
+                fileTypes={memoizedFileTypes}
+                setCurrentPage={handlePageChange}
+                searchLoading={searchLoading}
             />
             <DocumentsTable
                 documents={documents}
-                loading={loadingData}
+                loading={loadingData || searchLoading}
                 openDetailsModal={openDetailsModal}
                 openEditModal={openEditModal}
                 openDeleteModal={openDeleteModal}
@@ -729,7 +939,7 @@ const DocumentsView = () => {
                 totalDocuments={totalDocuments}
                 perPage={perPage}
                 currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
+                setCurrentPage={handlePageChange}
             />
             <UploadModal
                 isOpen={isModalOpen}
@@ -751,7 +961,7 @@ const DocumentsView = () => {
                 fetchDepartments={fetchDepartments}
                 departmentsPagination={departmentsPagination}
                 isLoadingDepartments={isLoadingDepartments}
-                fileTypes={fileTypes}
+                fileTypes={memoizedFileTypes}
                 isUploading={isUploading}
                 handleUpload={handleUpload}
                 error={error}
@@ -780,7 +990,7 @@ const DocumentsView = () => {
                 fetchDepartments={fetchDepartments}
                 departmentsPagination={departmentsPagination}
                 isLoadingDepartments={isLoadingDepartments}
-                fileTypes={fileTypes}
+                fileTypes={memoizedFileTypes}
                 isUpdating={isUpdating}
                 handleUpdate={handleUpdate}
                 error={error}

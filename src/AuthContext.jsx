@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { API_CONFIG, apiRequest, safeJsonParse, TokenManager } from './api';
 
 const AuthContext = createContext();
@@ -11,49 +11,41 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(TokenManager.get());
+    const [token, setToken] = useState(() => TokenManager.get()); // Lazy initial state
     const [loading, setLoading] = useState(true);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState(null);
 
+    // Refs để tránh stale closure và track mounted state
+    const isMountedRef = useRef(true);
+    const refreshIntervalRef = useRef(null);
+    const isRefreshingRef = useRef(false);
+
+    // Cleanup function
     useEffect(() => {
-        const initializeAuth = async () => {
-            if (token) {
-                const userData = localStorage.getItem('user_data');
-                if (userData) {
-                    try {
-                        setUser(JSON.parse(userData));
-                        setIsReady(true);
-                    } catch (error) {
-                        console.error('Error parsing user data:', error);
-                        logout();
-                    }
-                } else {
-                    logout();
-                }
+        return () => {
+            isMountedRef.current = false;
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
             }
-            setLoading(false);
         };
+    }, []);
 
-        initializeAuth();
-    }, [token]);
+    // Memoized refresh function để tránh dependency loop
+    const refreshToken = useCallback(async () => {
+        if (isRefreshingRef.current || !isMountedRef.current) {
+            return false;
+        }
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (token && TokenManager.isExpiringSoon()) {
-                refreshToken();
-            }
-        }, 60000);
+        isRefreshingRef.current = true;
 
-        return () => clearInterval(interval);
-    }, [token]);
-
-    const refreshToken = async () => {
         try {
             const refreshTokenStored = localStorage.getItem('refresh_token');
             if (!refreshTokenStored) {
-                logout();
-                setError('Không tìm thấy refresh token');
+                if (isMountedRef.current) {
+                    logout();
+                    setError('Không tìm thấy refresh token');
+                }
                 return false;
             }
 
@@ -64,30 +56,119 @@ export const AuthProvider = ({ children }) => {
 
             if (response.ok) {
                 const data = await safeJsonParse(response);
-                TokenManager.set(data.access_token, data.expires_in);
-                setToken(data.access_token);
-                setError(null);
+                if (isMountedRef.current) {
+                    TokenManager.set(data.access_token, data.expires_in);
+                    setToken(data.access_token);
+                    setError(null);
+                }
                 return true;
             } else {
-                logout();
-                setError('Không thể làm mới token');
+                if (isMountedRef.current) {
+                    logout();
+                    setError('Không thể làm mới token');
+                }
                 return false;
             }
         } catch (error) {
             console.error('Token refresh failed:', error);
-            logout();
-            setError('Lỗi khi làm mới token: ' + error.message);
+            if (isMountedRef.current) {
+                logout();
+                setError('Lỗi khi làm mới token: ' + error.message);
+            }
             return false;
+        } finally {
+            isRefreshingRef.current = false;
         }
-    };
+    }, []); // Không có dependencies để tránh re-create
 
-    const login = async (username, password) => {
+    // Memoized logout function
+    const logout = useCallback(() => {
+        if (!isMountedRef.current) return;
+
+        TokenManager.clear();
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_data');
+
+        setToken(null);
+        setUser(null);
+        setIsReady(false);
+        setError(null);
+
+        // Clear interval
+        if (refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+            refreshIntervalRef.current = null;
+        }
+    }, []);
+
+    // Initialize auth - chỉ chạy một lần khi mount
+    useEffect(() => {
+        const initializeAuth = async () => {
+            if (!isMountedRef.current) return;
+
+            const currentToken = TokenManager.get();
+            if (currentToken) {
+                const userData = localStorage.getItem('user_data');
+                if (userData) {
+                    try {
+                        const parsedUser = JSON.parse(userData);
+                        if (isMountedRef.current) {
+                            setUser(parsedUser);
+                            setToken(currentToken);
+                            setIsReady(true);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing user data:', error);
+                        if (isMountedRef.current) {
+                            logout();
+                        }
+                    }
+                }
+            }
+
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
+        };
+
+        initializeAuth();
+    }, []); // Chỉ chạy một lần khi mount
+
+    // Setup refresh interval - chỉ setup khi có token và chưa có interval
+    useEffect(() => {
+        if (token && !refreshIntervalRef.current && isMountedRef.current) {
+            refreshIntervalRef.current = setInterval(() => {
+                if (TokenManager.get() && TokenManager.isExpiringSoon()) {
+                    refreshToken();
+                }
+            }, 60000);
+        } else if (!token && refreshIntervalRef.current) {
+            clearInterval(refreshIntervalRef.current);
+            refreshIntervalRef.current = null;
+        }
+
+        return () => {
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
+                refreshIntervalRef.current = null;
+            }
+        };
+    }, [token, refreshToken]);
+
+    // Memoized login function
+    const login = useCallback(async (username, password) => {
+        if (!isMountedRef.current) return { success: false, error: 'Component unmounted' };
+
         try {
-            setLoading(true); // Bắt đầu loading
+            setLoading(true);
+            setError(null); // Clear previous errors
+
             const response = await apiRequest(API_CONFIG.ENDPOINTS.LOGIN, {
                 method: 'POST',
                 body: JSON.stringify({ username, password }),
             }, false, true);
+
+            if (!isMountedRef.current) return { success: false, error: 'Component unmounted' };
 
             if (response.ok) {
                 const data = await safeJsonParse(response);
@@ -95,22 +176,27 @@ export const AuthProvider = ({ children }) => {
                 // Kiểm tra user_type
                 if (data.user.user_type !== 'Cán bộ quản lý') {
                     const errorMessage = 'Chỉ được đăng nhập bằng tài khoản của Cán bộ quản lý.';
-                    setError(errorMessage);
-                    setLoading(false); // Tắt loading
+                    if (isMountedRef.current) {
+                        setError(errorMessage);
+                        setLoading(false);
+                    }
                     return { success: false, error: errorMessage };
                 }
 
-                // Đồng bộ hóa token và user nếu không phải Cán bộ quản lý
-                await new Promise((resolve) => {
+                // Batch tất cả state updates và localStorage operations
+                if (isMountedRef.current) {
+                    // Set token và user data
                     TokenManager.set(data.access_token, data.expires_in || 3600);
                     localStorage.setItem('refresh_token', data.refresh_token);
                     localStorage.setItem('user_data', JSON.stringify(data.user));
+
+                    // Batch state updates
                     setToken(data.access_token);
                     setUser(data.user);
                     setIsReady(true);
                     setError(null);
-                    resolve();
-                });
+                }
+
                 return { success: true, data };
             } else {
                 const errorText = await response.text();
@@ -122,7 +208,10 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     errorMessage = `Đăng nhập thất bại: ${response.status} - ${errorText}`;
                 }
-                setError(errorMessage);
+
+                if (isMountedRef.current) {
+                    setError(errorMessage);
+                }
                 return { success: false, error: errorMessage };
             }
         } catch (error) {
@@ -130,21 +219,34 @@ export const AuthProvider = ({ children }) => {
                 error.name === 'TypeError' && error.message.includes('Failed to fetch')
                     ? 'Lỗi CORS hoặc kết nối mạng. Vui lòng kiểm tra server.'
                     : 'Lỗi kết nối mạng';
-            setError(errorMessage);
+
+            if (isMountedRef.current) {
+                setError(errorMessage);
+            }
             return { success: false, error: errorMessage };
         } finally {
-            setLoading(false); // Kết thúc loading
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
-    };
+    }, []);
 
-    const logout = () => {
-        TokenManager.clear();
-        setToken(null);
-        setUser(null);
-        setIsReady(false);
-        setError(null);
-    };
+    // Memoized context value để tránh re-render children
+    const contextValue = useMemo(() => ({
+        user,
+        token,
+        login,
+        logout,
+        isAuthenticated: !!token && !!user,
+        loading,
+        isReady,
+        error,
+        refreshToken
+    }), [user, token, login, logout, loading, isReady, error, refreshToken]);
 
-    const value = { user, token, login, logout, isAuthenticated: !!token && !!user, loading, isReady, error, refreshToken };
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={contextValue}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
