@@ -45,5 +45,8 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/vector/, '/api/vector')
       }
     }
-  }
+  },
+  build: {
+    outDir: 'dist',
+  },
 })
