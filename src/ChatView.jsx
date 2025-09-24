@@ -90,7 +90,7 @@ const ChatView = () => {
                     query: inputMessage,
                     file_type: selectedFileType,
                     k: 5,
-                    similarity_threshold: 0.5
+                    similarity_threshold: 0.4
                 })
             }, false, false, token);
 
