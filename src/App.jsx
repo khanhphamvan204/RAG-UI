@@ -13,7 +13,6 @@ const App = () => {
   const [activeView, setActiveView] = useState('documents');
   const { isAuthenticated, loading, isReady, user } = useAuth();
 
-  // Memoize loading component để tránh re-render không cần thiết
   const LoadingScreen = useMemo(() => (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-lg">
@@ -23,7 +22,6 @@ const App = () => {
     </div>
   ), []);
 
-  // Memoize preparing data screen
   const PreparingDataScreen = useMemo(() => (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-lg">
@@ -33,7 +31,6 @@ const App = () => {
     </div>
   ), []);
 
-  // Memoize main content để tránh re-render khi activeView không đổi
   const MainContent = useMemo(() => {
     switch (activeView) {
       case 'documents':
@@ -49,37 +46,38 @@ const App = () => {
     }
   }, [activeView]);
 
-  // Simplify loading logic
-  const isLoading = loading;
-  const isPreparingData = isAuthenticated && !isReady;
-  const shouldShowApp = isAuthenticated && isReady && user;
+  console.log('App render state:', {
+    loading,
+    isAuthenticated,
+    isReady,
+    hasUser: !!user,
+  });
 
-  // Early returns for loading states
-  if (isLoading) {
+  if (loading && !isAuthenticated) {
+    console.log('Showing initial loading screen');
     return LoadingScreen;
   }
 
-  if (isPreparingData) {
+  if (isAuthenticated && !isReady) {
+    console.log('Showing preparing data screen');
     return PreparingDataScreen;
   }
 
-  return (
-    <div className="flex flex-col h-screen">
-      {shouldShowApp ? (
-        <>
-          <Header />
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar activeView={activeView} setActiveView={setActiveView} />
-            <main className="flex-1 overflow-y-auto">
-              {MainContent}
-            </main>
-          </div>
-        </>
-      ) : (
-        <LoginForm />
-      )}
-    </div>
-  );
+  if (isAuthenticated && isReady && user) {
+    console.log('Showing main app');
+    return (
+      <div className="flex flex-col h-screen">
+        <Header />
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar activeView={activeView} setActiveView={setActiveView} />
+          <main className="flex-1 overflow-y-auto">{MainContent}</main>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Showing login form');
+  return <LoginForm />;
 };
 
 export default App;

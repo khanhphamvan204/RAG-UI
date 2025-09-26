@@ -11,17 +11,15 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(() => TokenManager.get()); // Lazy initial state
+    const [token, setToken] = useState(() => TokenManager.get());
     const [loading, setLoading] = useState(true);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState(null);
 
-    // Refs để tránh stale closure và track mounted state
     const isMountedRef = useRef(true);
     const refreshIntervalRef = useRef(null);
     const isRefreshingRef = useRef(false);
 
-    // Cleanup function
     useEffect(() => {
         return () => {
             isMountedRef.current = false;
@@ -31,7 +29,6 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-    // Memoized refresh function để tránh dependency loop
     const refreshToken = useCallback(async () => {
         if (isRefreshingRef.current || !isMountedRef.current) {
             return false;
@@ -79,9 +76,8 @@ export const AuthProvider = ({ children }) => {
         } finally {
             isRefreshingRef.current = false;
         }
-    }, []); // Không có dependencies để tránh re-create
+    }, []);
 
-    // Memoized logout function
     const logout = useCallback(() => {
         if (!isMountedRef.current) return;
 
@@ -94,14 +90,18 @@ export const AuthProvider = ({ children }) => {
         setIsReady(false);
         setError(null);
 
-        // Clear interval
         if (refreshIntervalRef.current) {
             clearInterval(refreshIntervalRef.current);
             refreshIntervalRef.current = null;
         }
     }, []);
 
-    // Initialize auth - chỉ chạy một lần khi mount
+    const clearError = useCallback(() => {
+        if (isMountedRef.current) {
+            setError(null);
+        }
+    }, []);
+
     useEffect(() => {
         const initializeAuth = async () => {
             if (!isMountedRef.current) return;
@@ -132,9 +132,8 @@ export const AuthProvider = ({ children }) => {
         };
 
         initializeAuth();
-    }, []); // Chỉ chạy một lần khi mount
+    }, [logout]);
 
-    // Setup refresh interval - chỉ setup khi có token và chưa có interval
     useEffect(() => {
         if (token && !refreshIntervalRef.current && isMountedRef.current) {
             refreshIntervalRef.current = setInterval(() => {
@@ -155,13 +154,12 @@ export const AuthProvider = ({ children }) => {
         };
     }, [token, refreshToken]);
 
-    // Memoized login function
     const login = useCallback(async (username, password) => {
         if (!isMountedRef.current) return { success: false, error: 'Component unmounted' };
 
         try {
             setLoading(true);
-            setError(null); // Clear previous errors
+            setError(null);
 
             const response = await apiRequest(API_CONFIG.ENDPOINTS.LOGIN, {
                 method: 'POST',
@@ -173,7 +171,6 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 const data = await safeJsonParse(response);
 
-                // Kiểm tra user_type
                 if (data.user.user_type !== 'Cán bộ quản lý') {
                     const errorMessage = 'Chỉ được đăng nhập bằng tài khoản của Cán bộ quản lý.';
                     if (isMountedRef.current) {
@@ -183,14 +180,11 @@ export const AuthProvider = ({ children }) => {
                     return { success: false, error: errorMessage };
                 }
 
-                // Batch tất cả state updates và localStorage operations
                 if (isMountedRef.current) {
-                    // Set token và user data
                     TokenManager.set(data.access_token, data.expires_in || 3600);
                     localStorage.setItem('refresh_token', data.refresh_token);
                     localStorage.setItem('user_data', JSON.stringify(data.user));
 
-                    // Batch state updates
                     setToken(data.access_token);
                     setUser(data.user);
                     setIsReady(true);
@@ -199,20 +193,45 @@ export const AuthProvider = ({ children }) => {
 
                 return { success: true, data };
             } else {
-                const errorText = await response.text();
-                let errorMessage;
-                if (response.status === 400) {
-                    errorMessage = 'Tên người dùng hoặc mật khẩu không đúng';
-                } else if (response.status === 401) {
-                    errorMessage = 'Không được phép đăng nhập. Vui lòng kiểm tra thông tin đăng nhập.';
+                let errorData;
+                let errorMessage = 'Đăng nhập thất bại';
+
+                try {
+                    const responseText = await response.text();
+                    errorData = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('Failed to parse error response:', parseError);
+                }
+
+                if (errorData) {
+                    if (errorData.error === 'INVALID_CREDENTIALS' && errorData.status_code === 401) {
+                        errorMessage = errorData.message || 'Tên đăng nhập hoặc mật khẩu không đúng.';
+                    } else if (errorData.message) {
+                        errorMessage = errorData.message;
+                    } else if (errorData.error) {
+                        errorMessage = errorData.error;
+                    }
                 } else {
-                    errorMessage = `Đăng nhập thất bại: ${response.status} - ${errorText}`;
+                    if (response.status === 400) {
+                        errorMessage = 'Tên người dùng hoặc mật khẩu không đúng';
+                    } else if (response.status === 401) {
+                        errorMessage = 'Không được phép đăng nhập. Vui lòng kiểm tra thông tin đăng nhập.';
+                    } else {
+                        errorMessage = `Đăng nhập thất bại: ${response.status}`;
+                    }
                 }
 
                 if (isMountedRef.current) {
                     setError(errorMessage);
                 }
-                return { success: false, error: errorMessage };
+
+                return {
+                    success: false,
+                    error: errorMessage,
+                    errorCode: errorData?.error,
+                    statusCode: errorData?.status_code || response.status,
+                    details: errorData?.details,
+                };
             }
         } catch (error) {
             const errorMessage =
@@ -231,7 +250,6 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    // Memoized context value để tránh re-render children
     const contextValue = useMemo(() => ({
         user,
         token,
@@ -241,12 +259,9 @@ export const AuthProvider = ({ children }) => {
         loading,
         isReady,
         error,
-        refreshToken
-    }), [user, token, login, logout, loading, isReady, error, refreshToken]);
+        refreshToken,
+        clearError,
+    }), [user, token, login, logout, loading, isReady, error, refreshToken, clearError]);
 
-    return (
-        <AuthContext.Provider value={contextValue}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
