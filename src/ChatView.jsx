@@ -103,7 +103,7 @@ const ChatView = () => {
             }
 
             // Gọi trực tiếp đến LangGraph server để test
-            const response = await fetch('https://eeda169521ea.ngrok-free.app/api/v1/analyze', {
+            const response = await fetch('https://ai-agent.bitech.vn/api/car/api/v1/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

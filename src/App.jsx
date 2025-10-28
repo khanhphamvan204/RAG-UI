@@ -17,7 +17,7 @@ const App = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-lg">
         <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
-        <span className="text-gray-700 font-medium">Đang khởi tạo...</span>
+        <span className="text-gray-700 font-medium">Đang đăng nhập...</span>
       </div>
     </div>
   ), []);
