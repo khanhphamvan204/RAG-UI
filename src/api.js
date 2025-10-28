@@ -3,7 +3,8 @@ export const API_CONFIG = {
     USE_PROXY_FOR_AUTH: false,
     USE_PROXY_FOR_RAG: false,
     AUTH_BASE_URL: 'https://ai-api.bitech.vn',
-    RAG_BASE_URL: 'https://ai-database.bitech.vn',
+    // RAG_BASE_URL: 'https://ai-database.bitech.vn',
+    RAG_BASE_URL: 'http://localhost:8000',
     ENDPOINTS: {
         LOGIN: '/api/auth/login',
         REFRESH: '/api/auth/refresh',

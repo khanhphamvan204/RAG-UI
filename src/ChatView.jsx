@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { MessageCircle, Send, Bot, RefreshCw } from 'lucide-react';
 import { apiRequest, safeJsonParse, API_CONFIG } from './api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Danh sách fileTypes mặc định nếu API thất bại
 const DEFAULT_FILE_TYPES = ['admin', 'teacher', 'student', 'public'];
@@ -167,7 +169,13 @@ const ChatView = () => {
                                 : 'bg-white border border-gray-200 shadow-sm'
                                 }`}
                         >
-                            <div className="whitespace-pre-wrap">{message.content}</div>
+                            {/* Render Markdown cho content với prose styling */}
+                            <div className={`prose prose-sm max-w-none ${message.type === 'user' ? 'prose-invert' : ''}`}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {message.content}
+                                </ReactMarkdown>
+                            </div>
+
                             {message.contexts && message.contexts.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-gray-200">
                                     <p className="text-xs text-gray-500 mb-2">Nguồn tham khảo:</p>
