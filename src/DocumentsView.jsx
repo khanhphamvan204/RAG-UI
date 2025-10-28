@@ -916,7 +916,7 @@ const DocumentsView = () => {
     }
 
     return (
-        <div className="flex-1 p-6 space-y-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+        <div className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
             <Header setIsModalOpen={setIsModalOpen} resetUploadForm={resetUploadForm} />
             <ErrorAlert error={error} setError={setError} />
             <SearchFilter

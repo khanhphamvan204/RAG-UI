@@ -205,23 +205,23 @@ const FolderRolesView = () => {
     }, []);
 
     return (
-        <div className="flex-1 p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 min-h-screen">
+        <div className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 min-h-screen">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 rounded-2xl shadow-xl p-6">
-                <div className="flex justify-between items-center">
+            <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                     <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">Phân quyền Thư mục</h2>
-                        <p className="text-purple-100 text-sm">Quản lý quyền truy cập thư mục theo vai trò người dùng</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Phân quyền Thư mục</h2>
+                        <p className="text-purple-100 text-xs sm:text-sm">Quản lý quyền truy cập thư mục theo vai trò người dùng</p>
                     </div>
                     <button
                         onClick={() => {
                             resetAddForm();
                             setIsAddModalOpen(true);
                         }}
-                        className="flex items-center gap-2 px-6 py-3 bg-white text-purple-600 rounded-xl hover:bg-purple-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white text-purple-600 rounded-xl hover:bg-purple-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
-                        <Plus className="w-5 h-5" />
-                        <span className="font-semibold">Thêm phân quyền</span>
+                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="font-semibold text-sm sm:text-base">Thêm phân quyền</span>
                     </button>
                 </div>
             </div>
@@ -329,25 +329,25 @@ const FolderRolesView = () => {
 
             {/* Add Modal */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-2xl shadow-2xl transform transition-all duration-300 scale-100 max-h-[90vh] overflow-y-auto m-4 border border-gray-200">
-                        <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 p-4">
+                    <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-2xl shadow-2xl transform transition-all duration-300 scale-100 max-h-[90vh] overflow-y-auto border border-gray-200">
+                        <div className="flex justify-between items-start sm:items-center mb-4 sm:mb-6 border-b border-gray-200 pb-4">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900">Tạo phân quyền mới</h3>
-                                <p className="text-sm text-gray-500 mt-1">Phân quyền truy cập thư mục cho vai trò người dùng</p>
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">Tạo phân quyền mới</h3>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-1">Phân quyền truy cập thư mục cho vai trò người dùng</p>
                             </div>
                             <button
                                 onClick={() => {
                                     setIsAddModalOpen(false);
                                     setAddModalError('');
                                 }}
-                                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-colors flex-shrink-0"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4 sm:space-y-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                                     Tên vai trò <span className="text-red-500">*</span>
@@ -355,7 +355,7 @@ const FolderRolesView = () => {
                                 <select
                                     value={newRole}
                                     onChange={(e) => setNewRole(e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                                 >
                                     <option value="">Chọn vai trò</option>
                                     {availableRoles.map((role) => (
@@ -375,7 +375,7 @@ const FolderRolesView = () => {
                                     onChange={(e) => setNewDescription(e.target.value)}
                                     placeholder="Mô tả về vai trò và quyền hạn..."
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none text-sm sm:text-base"
                                 />
                             </div>
 
@@ -383,7 +383,7 @@ const FolderRolesView = () => {
                                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                                     Thư mục được phép truy cập <span className="text-red-500">*</span>
                                 </label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {availableFolders.map((folder) => (
                                         <div
                                             key={folder}
@@ -452,20 +452,20 @@ const FolderRolesView = () => {
                                 </div>
                             )}
 
-                            <div className="flex gap-4 pt-4">
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
                                 <button
                                     onClick={() => {
                                         setIsAddModalOpen(false);
                                         setAddModalError('');
                                     }}
-                                    className="flex-1 py-3 px-6 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium"
+                                    className="flex-1 py-2 sm:py-3 px-4 sm:px-6 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium text-sm sm:text-base"
                                 >
                                     Hủy
                                 </button>
                                 <button
                                     onClick={handleAddFolderRole}
                                     disabled={isAdding || !newRole.trim() || selectedFolders.length === 0}
-                                    className={`flex-1 py-3 px-6 text-white rounded-xl transition-all duration-200 font-medium ${isAdding || !newRole.trim() || selectedFolders.length === 0
+                                    className={`flex-1 py-2 sm:py-3 px-4 sm:px-6 text-white rounded-xl transition-all duration-200 font-medium text-sm sm:text-base ${isAdding || !newRole.trim() || selectedFolders.length === 0
                                         ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 shadow-lg hover:shadow-xl'
                                         }`}
@@ -490,8 +490,8 @@ const FolderRolesView = () => {
 
             {/* Delete Modal */}
             {isDeleteModalOpen && deletingRole && (
-                <div className="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 text-center border border-gray-200">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 p-4">
+                    <div className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 text-center border border-gray-200">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Trash2 className="h-8 w-8 text-red-500" />
                         </div>

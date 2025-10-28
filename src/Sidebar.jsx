@@ -1,9 +1,10 @@
-import React from 'react';
-import { FileText, MessageSquare, Folder, Shield, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, MessageSquare, Folder, Shield, LogOut, X, Menu } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
 const Sidebar = ({ activeView, setActiveView }) => {
     const { logout } = useAuth();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const menuItems = [
         {
@@ -40,59 +41,99 @@ const Sidebar = ({ activeView, setActiveView }) => {
         }
     ];
 
+    const handleMenuItemClick = (itemId) => {
+        setActiveView(itemId);
+        setIsMobileMenuOpen(false);
+    };
+
     return (
-        <div className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
-            {/* Logo/Brand */}
-            <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-900">Document AI</h1>
-                        <p className="text-xs text-gray-500">Quản lý thông minh</p>
+        <>
+            {/* Mobile Menu Toggle Button */}
+            <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden fixed top-20 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                aria-label="Toggle menu"
+            >
+                <Menu className="w-6 h-6 text-gray-700" />
+            </button>
+
+            {/* Mobile Overlay with Blur */}
+            {isMobileMenuOpen && (
+                <div
+                    className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <div className={`
+                fixed lg:static inset-y-0 left-0 z-40
+                w-64 bg-white shadow-lg border-r border-gray-200 
+                flex flex-col
+                transform transition-transform duration-300 ease-in-out
+                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
+                {/* Logo/Brand */}
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-lg font-bold text-gray-900">Document AI</h1>
+                            <p className="text-xs text-gray-500">Quản lý thông minh</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Menu Items */}
-            <nav className="flex-1 px-4 py-6 space-y-2">
-                {menuItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeView === item.id;
+                {/* Menu Items */}
+                <nav className="flex-1 px-4 py-6 space-y-2">
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = activeView === item.id;
 
-                    return (
-                        <button
-                            key={item.id}
-                            onClick={() => setActiveView(item.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left group ${isActive
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => handleMenuItemClick(item.id)}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-left group ${isActive
                                     ? `${item.bgColor} ${item.color} shadow-sm font-semibold`
                                     : `text-gray-600 hover:text-gray-900 ${item.hoverColor}`
-                                }`}
-                        >
-                            <Icon className={`w-5 h-5 ${isActive ? item.color : 'text-gray-400 group-hover:text-gray-600'}`} />
-                            <span className={`font-medium ${isActive ? 'text-current' : ''}`}>
-                                {item.label}
-                            </span>
-                            {isActive && (
-                                <div className={`ml-auto w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')}`} />
-                            )}
-                        </button>
-                    );
-                })}
-            </nav>
+                                    }`}
+                            >
+                                <Icon className={`w-5 h-5 ${isActive ? item.color : 'text-gray-400 group-hover:text-gray-600'}`} />
+                                <span className={`font-medium ${isActive ? 'text-current' : ''}`}>
+                                    {item.label}
+                                </span>
+                                {isActive && (
+                                    <div className={`ml-auto w-2 h-2 rounded-full ${item.color.replace('text-', 'bg-')}`} />
+                                )}
+                            </button>
+                        );
+                    })}
+                </nav>
 
-            {/* Logout Button */}
-            <div className="p-4 border-t border-gray-200">
+                {/* Logout Button */}
+                <div className="p-4 border-t border-gray-200">
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span className="font-medium">Đăng xuất</span>
+                    </button>
+                </div>
+
+                {/* Close button for mobile */}
                 <button
-                    onClick={logout}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-200"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="lg:hidden absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Close menu"
                 >
-                    <LogOut className="w-5 h-5" />
-                    <span className="font-medium">Đăng xuất</span>
+                    <X className="w-5 h-5" />
                 </button>
             </div>
-        </div>
+        </>
     );
 };
 

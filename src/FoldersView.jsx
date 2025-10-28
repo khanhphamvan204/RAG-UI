@@ -138,23 +138,23 @@ const FoldersView = () => {
     }, []);
 
     return (
-        <div className="flex-1 p-6 space-y-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
+        <div className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-2xl shadow-xl p-6">
-                <div className="flex justify-between items-center">
+            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
                     <div>
-                        <h2 className="text-3xl font-bold text-white mb-2">Quản lý Thư mục</h2>
-                        <p className="text-green-100 text-sm">Tạo và quản lý các thư mục tài liệu</p>
+                        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">Quản lý Thư mục</h2>
+                        <p className="text-green-100 text-xs sm:text-sm">Tạo và quản lý các thư mục tài liệu</p>
                     </div>
                     <button
                         onClick={() => {
                             resetAddForm();
                             setIsAddModalOpen(true);
                         }}
-                        className="flex items-center gap-2 px-6 py-3 bg-white text-green-600 rounded-xl hover:bg-green-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white text-green-600 rounded-xl hover:bg-green-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
-                        <Plus className="w-5 h-5" />
-                        <span className="font-semibold">Tạo thư mục</span>
+                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="font-semibold text-sm sm:text-base">Tạo thư mục</span>
                     </button>
                 </div>
             </div>
@@ -189,7 +189,7 @@ const FoldersView = () => {
             </div>
 
             {/* Folders Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {loading ? (
                     <div className="col-span-full flex items-center justify-center py-16">
                         <div className="flex items-center gap-3">
@@ -237,12 +237,12 @@ const FoldersView = () => {
 
             {/* Add Modal */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 border border-gray-200">
-                        <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 p-4">
+                    <div className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 border border-gray-200">
+                        <div className="flex justify-between items-center mb-4 sm:mb-6 border-b border-gray-200 pb-4">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900">Tạo thư mục mới</h3>
-                                <p className="text-sm text-gray-500 mt-1">Tạo thư mục để tổ chức tài liệu</p>
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">Tạo thư mục mới</h3>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-1">Tạo thư mục để tổ chức tài liệu</p>
                             </div>
                             <button
                                 onClick={() => setIsAddModalOpen(false)}
@@ -261,7 +261,7 @@ const FoldersView = () => {
                                     value={newFolderName}
                                     onChange={(e) => setNewFolderName(e.target.value)}
                                     placeholder="Nhập tên thư mục..."
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                                 />
                             </div>
                             <div>
@@ -271,32 +271,32 @@ const FoldersView = () => {
                                     onChange={(e) => setNewFolderDescription(e.target.value)}
                                     placeholder="Nhập mô tả thư mục (tùy chọn)..."
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 resize-none text-sm sm:text-base"
                                 />
                             </div>
-                            <div className="flex gap-4 pt-4">
+                            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
                                 <button
                                     onClick={() => setIsAddModalOpen(false)}
-                                    className="flex-1 py-3 px-6 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium"
+                                    className="flex-1 py-2 sm:py-3 px-4 sm:px-6 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium text-sm sm:text-base"
                                 >
                                     Hủy
                                 </button>
                                 <button
                                     onClick={handleAddFolder}
                                     disabled={isAdding || !newFolderName.trim()}
-                                    className={`flex-1 py-3 px-6 text-white rounded-xl transition-all duration-200 font-medium ${isAdding || !newFolderName.trim()
+                                    className={`flex-1 py-2 sm:py-3 px-4 sm:px-6 text-white rounded-xl transition-all duration-200 font-medium text-sm sm:text-base ${isAdding || !newFolderName.trim()
                                         ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl'
                                         }`}
                                 >
                                     {isAdding ? (
                                         <span className="flex items-center justify-center">
-                                            <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                                            <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mr-2" />
                                             Đang tạo...
                                         </span>
                                     ) : (
                                         <span className="flex items-center justify-center">
-                                            <Plus className="h-5 w-5 mr-2" />
+                                            <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                                             Tạo thư mục
                                         </span>
                                     )}
@@ -309,39 +309,39 @@ const FoldersView = () => {
 
             {/* Delete Modal */}
             {isDeleteModalOpen && deletingFolder && (
-                <div className="fixed inset-0 bg-white bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
-                    <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 text-center border border-gray-200">
-                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Trash2 className="h-8 w-8 text-red-500" />
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300 p-4">
+                    <div className="bg-white rounded-xl sm:rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100 text-center border border-gray-200">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Trash2 className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Xác nhận xóa thư mục</h3>
-                        <p className="text-gray-600 mb-6">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">Xác nhận xóa thư mục</h3>
+                        <p className="text-sm sm:text-base text-gray-600 mb-6">
                             Bạn có chắc chắn muốn xóa thư mục <span className="font-semibold">"{deletingFolder}"</span>? Hành động này
                             không thể hoàn tác.
                         </p>
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <button
                                 onClick={() => setIsDeleteModalOpen(false)}
-                                className="flex-1 px-6 py-3 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                                className="flex-1 px-4 sm:px-6 py-2 sm:py-3 text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm sm:text-base"
                             >
                                 Hủy
                             </button>
                             <button
                                 onClick={handleDeleteFolder}
                                 disabled={isDeleting}
-                                className={`flex-1 px-6 py-3 text-white rounded-xl transition-all duration-200 font-medium ${isDeleting
+                                className={`flex-1 px-4 sm:px-6 py-2 sm:py-3 text-white rounded-xl transition-all duration-200 font-medium text-sm sm:text-base ${isDeleting
                                     ? 'bg-gray-400 cursor-not-allowed'
                                     : 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 shadow-lg hover:shadow-xl'
                                     }`}
                             >
                                 {isDeleting ? (
                                     <span className="flex items-center justify-center">
-                                        <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                                        <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mr-2" />
                                         Đang xóa...
                                     </span>
                                 ) : (
                                     <span className="flex items-center justify-center">
-                                        <Trash2 className="h-5 w-5 mr-2" />
+                                        <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                                         Xóa thư mục
                                     </span>
                                 )}

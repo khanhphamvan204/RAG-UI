@@ -66,11 +66,11 @@ const App = () => {
   if (isAuthenticated && isReady && user) {
     console.log('Showing main app');
     return (
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen overflow-hidden">
         <Header />
         <div className="flex flex-1 overflow-hidden">
           <Sidebar activeView={activeView} setActiveView={setActiveView} />
-          <main className="flex-1 overflow-y-auto">{MainContent}</main>
+          <main className="flex-1 overflow-y-auto w-full">{MainContent}</main>
         </div>
       </div>
     );

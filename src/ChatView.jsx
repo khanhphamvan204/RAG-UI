@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { MessageCircle, Send, Bot, RefreshCw } from 'lucide-react';
 import { apiRequest, safeJsonParse, API_CONFIG } from './api';
@@ -16,6 +16,17 @@ const ChatView = () => {
     const [selectedFileType, setSelectedFileType] = useState('public');
     const [fileTypes, setFileTypes] = useState(DEFAULT_FILE_TYPES);
     const [error, setError] = useState('');
+
+    // Sử dụng useRef để lưu thread_id, persist qua re-renders nhưng reset khi refresh page
+    const threadIdRef = useRef(null);
+
+    // Khởi tạo thread_id một lần khi component mount
+    useEffect(() => {
+        if (!threadIdRef.current) {
+            threadIdRef.current = `thread-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            console.log('New thread created:', threadIdRef.current);
+        }
+    }, []);
 
     // Token validation helper
     const validateToken = useCallback(async () => {
@@ -75,7 +86,12 @@ const ChatView = () => {
     const handleSendMessage = async () => {
         if (!inputMessage.trim() || isLoading) return;
 
-        const userMessage = { id: Date.now(), type: 'user', content: inputMessage, timestamp: new Date() };
+        const userMessage = {
+            id: Date.now(),
+            type: 'user',
+            content: inputMessage,
+            timestamp: new Date()
+        };
         setMessages(prev => [...prev, userMessage]);
         setInputMessage('');
         setIsLoading(true);
@@ -86,26 +102,36 @@ const ChatView = () => {
                 throw new Error('Phiên đăng nhập không hợp lệ');
             }
 
-            const response = await apiRequest(API_CONFIG.ENDPOINTS.SEARCH_WITH_LLM, {
+            // Gọi trực tiếp đến LangGraph server để test
+            const response = await fetch('https://eeda169521ea.ngrok-free.app/api/v1/analyze', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
-                    query: inputMessage,
-                    file_type: selectedFileType,
-                    k: 5,
-                    similarity_threshold: 0.4
+                    message: inputMessage,
+                    thread_id: threadIdRef.current,
+                    user_id: token?.user_id || 'anonymous'
                 })
-            }, false, false, token);
+            });
 
             if (response.ok) {
                 const data = await safeJsonParse(response);
+
                 const aiMessage = {
                     id: Date.now() + 1,
                     type: 'ai',
-                    content: data.llm_response,
-                    contexts: data.contexts,
+                    content: data.message || data.final_analysis || 'Không có phản hồi',
+                    car_info: data.car_info,
+                    market_price: data.market_price,
+                    depreciation_info: data.depreciation_info,
+                    conversation_stage: data.conversation_stage,
+                    needs_more_info: data.needs_more_info,
+                    missing_fields: data.missing_fields,
                     timestamp: new Date()
                 };
                 setMessages(prev => [...prev, aiMessage]);
+                setError('');
             } else {
                 throw new Error(`Server error: ${response.status}`);
             }
@@ -117,6 +143,7 @@ const ChatView = () => {
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMessage]);
+            setError(error.message);
         } finally {
             setIsLoading(false);
         }
@@ -131,13 +158,13 @@ const ChatView = () => {
 
     return (
         <div className="flex-1 flex flex-col h-full">
-            <div className="border-b border-gray-200 p-4">
-                <div className="flex items-center gap-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Trò chuyện với AI</h3>
+            <div className="border-b border-gray-200 p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">Trò chuyện với AI</h3>
                     <select
                         value={selectedFileType}
                         onChange={(e) => setSelectedFileType(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                         {fileTypes.map(type => (
                             <option key={type} value={type}>{type}</option>
@@ -145,11 +172,11 @@ const ChatView = () => {
                     </select>
                 </div>
                 {error && (
-                    <div className="mt-2 text-red-600 text-sm">{error}</div>
+                    <div className="mt-2 text-red-600 text-xs sm:text-sm">{error}</div>
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
                 {messages.length === 0 && (
                     <div className="text-center py-12">
                         <Bot className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -164,7 +191,7 @@ const ChatView = () => {
                         className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         <div
-                            className={`max-w-3xl px-4 py-3 rounded-lg ${message.type === 'user'
+                            className={`w-full sm:max-w-md md:max-w-2xl lg:max-w-3xl px-3 sm:px-4 py-2 sm:py-3 rounded-lg ${message.type === 'user'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-white border border-gray-200 shadow-sm'
                                 }`}
@@ -176,21 +203,43 @@ const ChatView = () => {
                                 </ReactMarkdown>
                             </div>
 
-                            {message.contexts && message.contexts.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                    <p className="text-xs text-gray-500 mb-2">Nguồn tham khảo:</p>
-                                    <div className="space-y-2">
-                                        {message.contexts.slice(0, 2).map((context, index) => (
-                                            <div key={index} className="text-xs bg-gray-50 p-2 rounded border">
-                                                <p className="text-gray-700 line-clamp-3">{context.content}</p>
-                                                <p className="text-gray-500 mt-1">
-                                                    Độ tương đồng: {(context.metadata.similarity_score * 100).toFixed(1)}%
-                                                </p>
+                            {/* Hiển thị thông tin xe nếu có */}
+                            {message.car_info && Object.keys(message.car_info).length > 0 && (
+                                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
+                                    <p className="text-xs text-gray-500 mb-1 sm:mb-2">Thông tin xe:</p>
+                                    <div className="text-xs bg-blue-50 p-2 rounded overflow-x-auto">
+                                        {Object.entries(message.car_info).map(([key, value]) => (
+                                            <div key={key} className="text-gray-700 break-words">
+                                                <strong>{key}:</strong> {value}
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
+
+                            {/* Hiển thị giá thị trường nếu có */}
+                            {message.market_price && Object.keys(message.market_price).length > 0 && (
+                                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
+                                    <p className="text-xs text-gray-500 mb-1 sm:mb-2">Giá thị trường:</p>
+                                    <div className="text-xs bg-green-50 p-2 rounded overflow-x-auto">
+                                        {Object.entries(message.market_price).map(([key, value]) => (
+                                            <div key={key} className="text-gray-700 break-words">
+                                                <strong>{key}:</strong> {value}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hiển thị missing fields nếu cần thêm thông tin */}
+                            {message.needs_more_info && message.missing_fields && message.missing_fields.length > 0 && (
+                                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
+                                    <p className="text-xs text-orange-600 mb-1 break-words">
+                                        Cần thêm thông tin: {message.missing_fields.join(', ')}
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="text-xs opacity-70 mt-2">
                                 {message.timestamp.toLocaleTimeString()}
                             </div>
@@ -200,32 +249,32 @@ const ChatView = () => {
 
                 {isLoading && (
                     <div className="flex justify-start">
-                        <div className="bg-white border border-gray-200 shadow-sm px-4 py-3 rounded-lg">
+                        <div className="bg-white border border-gray-200 shadow-sm px-3 sm:px-4 py-2 sm:py-3 rounded-lg">
                             <div className="flex items-center gap-2">
                                 <RefreshCw className="w-4 h-4 animate-spin" />
-                                <span className="text-gray-600">AI đang suy nghĩ...</span>
+                                <span className="text-sm sm:text-base text-gray-600">AI đang suy nghĩ...</span>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
 
-            <div className="border-t border-gray-200 p-4">
-                <div className="flex gap-3">
+            <div className="border-t border-gray-200 p-3 sm:p-4">
+                <div className="flex gap-2 sm:gap-3">
                     <textarea
                         value={inputMessage}
                         onChange={(e) => setInputMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Nhập câu hỏi của bạn..."
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                         rows="2"
                     />
                     <button
                         onClick={handleSendMessage}
                         disabled={!inputMessage.trim() || isLoading}
-                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                     >
-                        <Send className="w-5 h-5" />
+                        <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                 </div>
             </div>

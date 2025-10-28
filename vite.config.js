@@ -10,6 +10,8 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {},
+    // Thêm dòng này để cho phép ngrok
+    allowedHosts: ['.ngrok-free.dev'],
   },
   base: '/ui',
 })

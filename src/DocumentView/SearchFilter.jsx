@@ -53,8 +53,8 @@ const SearchFilter = ({
     ), [searchLoading]);
 
     return (
-        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-            <div className="flex gap-4 items-center">
+        <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 md:p-6 border border-gray-100">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
                 <div className="relative flex-1">
                     <input
                         ref={searchInputRef}
@@ -62,18 +62,18 @@ const SearchFilter = ({
                         value={searchQuery}
                         onChange={handleSearchChange}
                         placeholder="Tìm kiếm tài liệu..."
-                        className="w-full px-4 py-3 pl-12 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 pl-10 sm:pl-12 pr-10 sm:pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-sm sm:text-base"
                         disabled={searchLoading}
                         autoComplete="off"
                     />
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+                    <Search className="absolute left-3 sm:left-4 top-2.5 sm:top-3.5 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                     {loadingIndicator}
                 </div>
                 <select
                     ref={selectRef}
                     value={fileTypeFilter}
                     onChange={handleFilterChange}
-                    className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200 min-w-[200px]"
+                    className="px-3 sm:px-4 py-2 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200 w-full sm:w-auto sm:min-w-[200px] text-sm sm:text-base"
                     disabled={searchLoading}
                 >
                     <option value="">Tất cả loại tài liệu</option>
@@ -83,10 +83,10 @@ const SearchFilter = ({
 
             {/* Loading indicator cho toàn bộ search filter */}
             {searchLoading && (
-                <div className="mt-4 flex items-center justify-center">
+                <div className="mt-3 sm:mt-4 flex items-center justify-center">
                     <div className="flex items-center space-x-2 text-blue-600">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-sm">Đang tìm kiếm...</span>
+                        <span className="text-xs sm:text-sm">Đang tìm kiếm...</span>
                     </div>
                 </div>
             )}
